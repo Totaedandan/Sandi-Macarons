@@ -10,6 +10,16 @@
         font-weight: 500;
         font-size: clamp(1.2rem, 2.5vw, 1.5rem);
     }
+
+    .logoWrapper {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+
+        .navLogo {
+            @include logoIcon($color: $red);
+        }
+    }
 }
 .footerWrapper {
     width: 100%;

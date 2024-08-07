@@ -1,21 +1,36 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import { Link } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Pagination, Autoplay } from 'swiper';
-import cakes from "../../cakeData";
 import styles from "./Cakes.module.scss";
 // swiper styles
 import 'swiper/css';
 import 'swiper/css/pagination';
 import { useStateContext } from '../../context/StateContextProvider';
+import axios from "axios";
 
 
 const CakesSlide = ({currentCake}) => {
   const { formatPrice } = useStateContext();
+  const [cakes, setCakes] = useState();
   
   const scrollToTop = () => {
     window.scrollTo(0, 0)
   }
+
+    const fetchProducts = async () => {
+        try {
+            const {data} = await axios.get('http://localhost:8080/admin');
+            setCakes(data);
+            console.log(data)
+        } catch (error) {
+            console.error('Error fetching products:', error);
+        }
+    };
+
+  useEffect(() => {
+      fetchProducts()
+  }, [])
 
   return (
     <section className={styles.cakesSlide}>
@@ -51,7 +66,7 @@ const CakesSlide = ({currentCake}) => {
                         (
                            <SwiperSlide key={index}>
                                <Link to={`/cakes/${lists.slug}`} className={styles.cardLink} onClick={scrollToTop}>
-                                   <img className={styles.cakeImage} src={lists.images[0]} alt={lists.cakeName} />
+                                   <img className={styles.cakeImage} src={`http://localhost:8080${lists.images[0]}`} alt={lists.cakeName} />
                                    <div className={styles.cakeDetails}>
                                        <p className={styles.cakeName}>{lists.cakeName}</p>
                                        <p className={styles.cakePrice}>${formatPrice(lists.details.price)}</p>

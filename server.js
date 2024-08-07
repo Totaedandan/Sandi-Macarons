@@ -3,13 +3,26 @@
 const express = require('express');
 const multer = require('multer');
 const mongoose = require('mongoose');
-const Product = require('./models/Product'); // Убедитесь, что у вас есть модель продукта
+const Product = require('./models/Product');
+const cors = require("cors"); // Убедитесь, что у вас есть модель продукта
 
 const app = express();
-const port = 3000;
+app.use(cors())
+app.use('/uploads', express.static('uploads'));
+const port = 8080;
+
 
 // Подключение к MongoDB
-mongoose.connect('mongodb://localhost:27017/yourdatabase', { useNewUrlParser: true, useUnifiedTopology: true });
+
+const mongoURI = 'mongodb://0.0.0.0:27017/admin';
+
+mongoose.connect(mongoURI)
+    .then(() => {
+        console.log('MongoDB connected');
+    })
+    .catch(err => {
+        console.error('MongoDB connection error:', err.message);
+    });
 
 // Настройка Multer для загрузки файлов
 const storage = multer.diskStorage({
@@ -36,21 +49,19 @@ app.get('/admin', async (req, res) => {
 });
 
 // Эндпоинт для добавления нового продукта
-app.post('/admin', upload.single('image'), async (req, res) => {
-    const { name, description, price, brand, productCollection, collectionDescription, priceAndWeight, priceIn, list } = req.body;
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : '';
+app.post('/admin', upload.array('images'), async (req, res) => {
+    const {  cakeName, slug, category, details } = req.body;
+    const images = req.files.map(file => `/uploads/${file.filename}`);
 
     const newProduct = new Product({
-        name,
-        description,
-        price,
-        brand,
-        productCollection,
-        collectionDescription,
-        priceAndWeight,
-        priceIn,
-        list: list.split(','),
-        imageUrl
+        cakeName,
+        slug,
+        category,
+        images,
+        details: {
+            price: details.price,
+            description: details.description.split(','),
+        }
     });
 
     try {
@@ -61,19 +72,33 @@ app.post('/admin', upload.single('image'), async (req, res) => {
     }
 });
 
-// Эндпоинт для удаления продукта
+// Endpoint to delete a product
 app.delete('/admin/:id', async (req, res) => {
     try {
-        const product = await Product.findById(req.params.id);
+        const product = await Product.deleteOne({_id: req.params.id});
         if (!product) {
             return res.status(404).json({ message: 'Product not found' });
         }
-        await product.remove();
         res.json({ message: 'Product deleted' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
+
+
+// Endpoint to get a cake by slug
+app.get('/admin/cakes/:slug', async (req, res) => {
+    try {
+        const cake = await Product.findOne({ slug: req.params.slug });
+        if (!cake) {
+            return res.status(404).json({ message: 'Cake not found' });
+        }
+        res.json(cake);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 
 app.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);

@@ -1,29 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import './style.scss'; // Assuming you have a corresponding stylesheet
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../contexts/authContext';
 import { FaEye } from 'react-icons/fa';
+import './style.scss'; // Assuming you have a corresponding stylesheet
 
 function Admin() {
     const [selectedOption, setSelectedOption] = useState("allProducts");
     const navigate = useNavigate();
 
-    const [name, setName] = useState("");
-    const [description, setDescription] = useState("");
-    const [brand, setBrand] = useState("");
-    const [price, setPrice] = useState();
-    const [file, setFile] = useState(null);
-    const [collection, setCollection] = useState('');
-    const [collectionDescription, setCollectionDescription] = useState('');
-    const [priceAndWeight, setPriceAndWeight] = useState(false);
-    const [priceIn, setPriceIn] = useState("KZT");
-    const [list, setList] = useState([]);
+    const [cakeName, setCakeName] = useState("");
+    const [slug, setSlug] = useState("");
+    const [category, setCategory] = useState("");
+    const [images, setImages] = useState([""]);
+    const [details, setDetails] = useState({
+        price: 0,
+        description: [""]
+    });
 
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    const {user, setUser, handleLogin} = useAuth();
+    const { user, setUser, handleLogin } = useAuth();
     const [userLogin, setUserLogin] = useState('');
     const [userPassword, setUserPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -34,11 +32,40 @@ function Admin() {
 
     const fetchProducts = async () => {
         try {
-            const response = await axios.get('http://localhost:3000/admin');
-            setProducts(response.data);
+            const {data} = await axios.get('http://localhost:8080/admin');
+            setProducts(data);
+            console.log(data)
         } catch (error) {
             console.error('Error fetching products:', error);
         }
+    };
+
+    const handleAddDescription = () => {
+        setDetails({ ...details, description: [...details.description, ""] });
+    };
+
+    const handleRemoveDescription = (index) => {
+        const newDescriptions = details.description.filter((_, i) => i !== index);
+        setDetails({ ...details, description: newDescriptions });
+    };
+
+    const handleDescriptionChange = (value, index) => {
+        const newDescriptions = details.description.map((desc, i) => (i === index ? value : desc));
+        setDetails({ ...details, description: newDescriptions });
+    };
+
+    const handleAddImage = () => {
+        setImages([...images, null]);
+    };
+
+    const handleRemoveImage = (index) => {
+        const newImages = images.filter((_, i) => i !== index);
+        setImages(newImages);
+    };
+
+    const handleImageChange = (file, index) => {
+        const newImages = images.map((image, i) => (i === index ? file : image));
+        setImages(newImages);
     };
 
     const handleOptionChange = (option) => {
@@ -48,12 +75,12 @@ function Admin() {
     const postData = async (formData) => {
         setLoading(true);
         try {
-            const response = await axios.post('http://localhost:3000/admin', formData, {
+            const {data} = await axios.post('http://localhost:8080/admin', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 }
             });
-            console.log('Product added:', response.data);
+            console.log('Product added:', data);
             handleOptionChange("allProducts");
             await fetchProducts();
         } catch (error) {
@@ -63,28 +90,36 @@ function Admin() {
         }
     };
 
-    const handleDelete = async (productId) => {
+    const deleteProduct = async (id) => {
         try {
-            await axios.delete(`http://localhost:3000/admin/${productId}`);
-            setProducts(products.filter(product => product._id !== productId));
+            await axios.delete(`http://localhost:8080/admin/${id}`);
+            console.log('Product deleted');
         } catch (error) {
             console.error('Error deleting product:', error);
+        } finally {
+            fetchProducts()
         }
     };
+
 
     const renderAllProducts = () => {
         return (
             <div className="product-grid">
                 {products.map((product) => (
                     <div className="product-card" key={product._id}>
-                        <img src={`${product.imageUrl}`} alt={product.name} />
-                        <h3>{product.name}</h3>
+                        {product.images.map((image, index) => (
+                            <img key={index} src={`http://localhost:8080${image}`} alt={product.cakeName} />
+                        ))}
+                        <h3>{product.cakeName}</h3>
+                        <p>Slug: {product.slug}</p>
+                        <p>Category: {product.category}</p>
                         <div className="actions">
-                            <button onClick={() => handleDelete(product._id)}>Delete</button>
+                            <button onClick={() => deleteProduct(product._id)}>Delete</button>
                         </div>
                     </div>
                 ))}
             </div>
+
         );
     };
 
@@ -92,16 +127,16 @@ function Admin() {
         const handleSubmit = (e) => {
             e.preventDefault();
             const formData = new FormData();
-            formData.append('name', name);
-            formData.append('description', description);
-            formData.append('price', price);
-            formData.append('image', file);
-            formData.append('brand', brand);
-            formData.append('productCollection', collection);
-            formData.append('collectionDescription', collectionDescription);
-            formData.append('priceAndWeight', priceAndWeight);
-            formData.append('priceIn', priceIn);
-            formData.append('list', list.join(',')); // Join list items with comma
+            formData.append('cakeName', cakeName);
+            formData.append('slug', slug);
+            formData.append('category', category);
+            images.forEach((image) => {
+                if (image) {
+                    formData.append('images', image);
+                }
+            });
+            formData.append('details[price]', details.price);
+            formData.append('details[description]', details.description.join(','));
 
             postData(formData);
         };
@@ -112,87 +147,81 @@ function Admin() {
                 onSubmit={handleSubmit}
             >
                 <div>
-                    <label>Название коллекция:</label>
-                    <input 
-                        type="text" 
-                        name="collection"
-                        value={collection}
-                        onChange={e => setCollection(e.target.value)}
+                    <label>Cake Name:</label>
+                    <input
+                        type="text"
+                        name="cakeName"
+                        value={cakeName}
+                        onChange={e => setCakeName(e.target.value)}
                     />
                 </div>
                 <div>
-                    <label>Описание коллекции:</label>
-                    <textarea 
-                        name="description"
-                        value={collectionDescription}
-                        onChange={e => setCollectionDescription(e.target.value)}
-                    ></textarea>
-                </div>
-                <hr />
-                <div>
-                    <label>Название:</label>
-                    <input 
-                        type="text" 
-                        name="name"
-                        value={name}
-                        onChange={e => setName(e.target.value)}
+                    <label>Slug:</label>
+                    <input
+                        type="text"
+                        name="slug"
+                        value={slug}
+                        onChange={e => setSlug(e.target.value)}
                     />
                 </div>
                 <div>
-                    <label>Название бренда:</label>
-                    <input 
-                        type="text" 
-                        name="brand"
-                        value={brand}
-                        onChange={e => setBrand(e.target.value)}
+                    <label>Category:</label>
+                    <select
+                        name="category"
+                        onChange={e => setCategory(e.target.value)}
+                    >
+                        <option disabled={true}>Выбрать</option>
+                        <option value="Макаронсы">Макаронсы</option>
+                        <option value="Сеты">Сеты</option>
+                        <option value="Ещё">Ещё</option>
+                    </select>
+                </div>
+                <div>
+                    <div className="description-column">
+                    <label>Images:</label>
+                    <button type="button" onClick={handleAddImage}>Add Image</button>
+                    </div>
+                    <div className="description-column">
+                    {images.map((image, index) => (
+                        <div key={index} className="description-row">
+                            <input
+                                type="file"
+                                onChange={e => handleImageChange(e.target.files[0], index)}
+                            />
+                            <button type="button" onClick={() => handleRemoveImage(index)}>Remove</button>
+                        </div>
+                    ))}
+                    </div>
+                </div>
+
+                <div>
+                    <label>Price:</label>
+                    <input
+                        type="number"
+                        name="details[price]"
+                        value={details.price}
+                        onChange={e => setDetails({ ...details, price: e.target.value })}
                     />
                 </div>
                 <div>
-                    <label>Описание товара:</label>
-                    <textarea 
-                        name="description"
-                        value={description}
-                        onChange={e => setDescription(e.target.value)}
-                    ></textarea>
+                    <div className="description-column">
+                    <label>Description:</label>
+                    <button type="button" onClick={handleAddDescription}>Add Description</button>
+                    </div>
+                    <div className="description-column">
+                    {details.description.map((desc, index) => (
+                        <div key={index} className="description-row">
+                            <textarea
+                                name="details[description]"
+                                value={desc}
+                                onChange={e => handleDescriptionChange(e.target.value, index)}
+                            ></textarea>
+                            <button type="button" onClick={() => handleRemoveDescription(index)}>Remove</button>
+                        </div>
+                    ))}
+                    </div>
                 </div>
-                <hr />
-                <div>
-                    <label>Цена:</label>
-                    <input 
-                        type="number" 
-                        name="price" 
-                        value={price}
-                        onChange={e => setPrice(e.target.value)}
-                    />
-                </div>
-                <div>
-                    <label>Считать вес</label>
-                    <input 
-                        type="checkbox" 
-                        name="priceAndWeight" 
-                        checked={priceAndWeight}
-                        onChange={e => setPriceAndWeight(e.target.checked)}
-                    />
-                </div>
-                <div>
-                    <label>Цена в (USD/KZT)</label>
-                    <input 
-                        type="text" 
-                        name="priceIn" 
-                        value={priceIn}
-                        onChange={e => setPriceIn(e.target.value)}
-                    />
-                </div>
-                <hr />
-                <div>
-                    <label>Фотография товара:</label>
-                    <input 
-                        type="file" 
-                        name="image" 
-                        onChange={e => setFile(e.target.files[0])}
-                    />
-                </div>
-                {loading ? <p>Loading...</p> : <button type="submit">Сохранить</button>}
+                {loading ? <p>Loading...</p> : <button type="submit">Save</button>}
             </form>
         );
     };
@@ -204,17 +233,17 @@ function Admin() {
                     <div>
                         <label>Логин</label>
                         <div>
-                            <input 
+                            <input
                                 type="text"
                                 value={userLogin}
-                                onChange={(e) => setUserLogin(e.target.value)} 
+                                onChange={(e) => setUserLogin(e.target.value)}
                             />
                         </div>
                     </div>
                     <div>
                         <label>Пароль</label>
                         <div>
-                            <input 
+                            <input
                                 type={`${!showPassword ? 'password' : 'text'}`}
                                 value={userPassword}
                                 onChange={(e) => setUserPassword(e.target.value)}
@@ -232,7 +261,7 @@ function Admin() {
                 </div>
             </div>
         )
-    }    
+    }
 
     return (
         <div className="admin-page">

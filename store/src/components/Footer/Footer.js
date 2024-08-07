@@ -8,8 +8,8 @@ const Footer = () => {
         <section className={styles.footerWrapper}>
             <div className={styles.footerContent}>
                 <h1 className={styles.footerLogoName}>
-                <div className={styles.footerLogoIcon}>
-                    <img src={logoImage} alt="Sandi Macarons Logo" className={styles.footerLogoImage} />
+                <div className={styles.logoWrapper}>
+                    <img src={logoImage} alt="Sandi Macarons Logo" className={styles.navLogo} />
                 </div>
                     Cәнді Macarons
                 </h1>
