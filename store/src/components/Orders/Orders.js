@@ -24,7 +24,7 @@ export default function Orders() {
 
         message = encodeURIComponent(message);
 
-        const phoneNumber = "+77083120167";
+        const phoneNumber = "+77770990100";
         const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${message}`;
 
         window.location.href = whatsappUrl;
